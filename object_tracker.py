@@ -23,6 +23,8 @@ from deep_sort import preprocessing, nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
+from tools import ds4a_utils
+
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
                     'path to weights file')
@@ -37,6 +39,7 @@ flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
+flags.DEFINE_string('file_output', './data/outputs/test.csv', 'path to output csv file')
 
 def main(_argv):
     # Definition of the parameters
@@ -81,6 +84,9 @@ def main(_argv):
 
     out = None
 
+    #Use video name to extract relevant info
+    video_name_dict = ds4a_utils.get_video_name_data(video_path)
+
     # get video ready to save locally if flag is set
     if FLAGS.output:
         # by default VideoCapture returns float instead of int
@@ -91,6 +97,8 @@ def main(_argv):
         out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
 
     frame_num = 0
+
+    output_csv_data = []
     # while video is running
     while True:
         return_value, frame = vid.read()
@@ -200,6 +208,7 @@ def main(_argv):
         tracker.predict()
         tracker.update(detections)
 
+        csv_index = 1
         # update tracks
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
@@ -207,7 +216,7 @@ def main(_argv):
             bbox = track.to_tlbr()
             class_name = track.get_class()
             adc = "%.2f" % (track.adc * 100) + "%"
-            
+            csv_index += 1
         # draw bbox on screen
             color = colors[int(track.track_id) % len(colors)]
             color = [i * 255 for i in color]
@@ -215,6 +224,10 @@ def main(_argv):
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
             cv2.putText(frame, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
 
+            #Added code to output to csv
+            res_dict = ds4a_utils.data_to_dict(video_name_dict['store_id'], video_name_dict['camera_id'], video_name_dict['init_timestamp'], 
+                                    csv_index, track.track_id, frame_num, adc, int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+            output_csv_data.append(res_dict)
         # if enable info flag then print details about each track
             if FLAGS.info:
                 print("Tracker ID: {}, Class: {}, Avg. Confidence: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, adc, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
@@ -232,7 +245,11 @@ def main(_argv):
         if FLAGS.output:
             out.write(result)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
+    ds4a_utils.write_to_csv(output_csv_data, FLAGS.file_output)
     cv2.destroyAllWindows()
+
+
+
 
 if __name__ == '__main__':
     try:
