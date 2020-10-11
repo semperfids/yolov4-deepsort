@@ -55,7 +55,7 @@ def write_to_csv(data, outfile):
 
 def compute_timestamp_from_frame(init_timestamp, frame):
     const_frames_per_second = 30
-    num_seconds = int(frame / 30)
+    num_seconds = int(frame / const_frames_per_second)
     #Add the number of seconds to the timestamp
     return init_timestamp + dt.timedelta(0,num_seconds)
 
