@@ -226,7 +226,7 @@ def main(_argv):
 
             #Added code to output to csv
             res_dict = ds4a_utils.data_to_dict(video_name_dict['store_id'], video_name_dict['camera_id'], video_name_dict['init_timestamp'], 
-                                    csv_index, track.track_id, frame_num, adc, int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+                                    csv_index, track.track_id, frame_num, track.adc, int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
             output_csv_data.append(res_dict)
         # if enable info flag then print details about each track
             if FLAGS.info:
