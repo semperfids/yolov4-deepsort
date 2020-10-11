@@ -206,6 +206,7 @@ def main(_argv):
                 continue 
             bbox = track.to_tlbr()
             class_name = track.get_class()
+            adc = "%.2f" % (track.adc * 100) + "%"
             
         # draw bbox on screen
             color = colors[int(track.track_id) % len(colors)]
@@ -216,7 +217,7 @@ def main(_argv):
 
         # if enable info flag then print details about each track
             if FLAGS.info:
-                print("Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
+                print("Tracker ID: {}, Class: {}, Avg. Confidence: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, adc, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
 
         # calculate frames per second of running detections
         fps = 1.0 / (time.time() - start_time)
