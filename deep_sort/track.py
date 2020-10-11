@@ -77,6 +77,11 @@ class Track:
         if feature is not None:
             self.features.append(feature)
 
+        #Adicion para promediar el confidence score
+        self.total_prob = 0
+        self.detection_confidence = detection_confidence
+        self.adc = 0
+        
         self._n_init = n_init
         self._max_age = max_age
         self.class_name = class_name
@@ -145,6 +150,11 @@ class Track:
 
         self.hits += 1
         self.time_since_update = 0
+        
+        #Adicion para promediar el confidence score
+        self.total_prob += self.detection_confidence
+        self.adc = self.total_prob / self.hits
+        
         if self.state == TrackState.Tentative and self.hits >= self._n_init:
             self.state = TrackState.Confirmed
 
