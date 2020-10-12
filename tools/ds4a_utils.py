@@ -19,6 +19,7 @@ def get_video_name_data(video_path):
     date_time_obj = dt.datetime.strptime(date_time_str, '%Y%m%d%H%M%S')
 
     video_name_dict = {
+        "video_name": video_name,
         "store_id": items[1],
         "camera_id": items[2],
         "init_timestamp": date_time_obj,
@@ -26,9 +27,10 @@ def get_video_name_data(video_path):
     }
     return video_name_dict
 
-def data_to_dict(store_id, camera_id, init_timestamp, index, tracking_id, frame, confidence, xmin, ymin, xmax, ymax):
+def data_to_dict(video_name, store_id, camera_id, init_timestamp, index, tracking_id, frame, confidence, xmin, ymin, xmax, ymax):
     curr_time = compute_timestamp_from_frame(init_timestamp, frame)
     res_dict = {
+        'source_video': video_name,
         'store_id': store_id,
         'camera_id': camera_id,
         'index': index,
@@ -45,7 +47,7 @@ def data_to_dict(store_id, camera_id, init_timestamp, index, tracking_id, frame,
 
 def write_to_csv(data, outfile):
     with open(outfile, mode='w') as csv_file:
-        fieldnames = ['store_id', 'camera_id', 'index', 'tracking_id', 'frame', 'timestamp', 'confidence', 'xmin', 'ymin', 'xmax', 'ymax']
+        fieldnames = ['source_video', 'store_id', 'camera_id', 'index', 'tracking_id', 'frame', 'timestamp', 'confidence', 'xmin', 'ymin', 'xmax', 'ymax']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
         writer.writeheader()
