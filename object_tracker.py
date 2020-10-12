@@ -99,6 +99,7 @@ def main(_argv):
     frame_num = 0
 
     output_csv_data = []
+    csv_index = 0
     # while video is running
     while True:
         return_value, frame = vid.read()
@@ -208,7 +209,6 @@ def main(_argv):
         tracker.predict()
         tracker.update(detections)
 
-        csv_index = 1
         # update tracks
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
