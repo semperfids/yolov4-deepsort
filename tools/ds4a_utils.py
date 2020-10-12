@@ -38,16 +38,16 @@ def data_to_dict(video_name, store_id, camera_id, init_timestamp, index, trackin
         'frame': frame,
         'timestamp': curr_time,
         'confidence': confidence,
-        'xmin': xmin,
-        'ymin': ymin,
-        'xmax': xmax,
-        'ymax': ymax
+        'x_min': xmin,
+        'y_min': ymin,
+        'x_max': xmax,
+        'y_max': ymax
     }
     return res_dict
 
 def write_to_csv(data, outfile):
     with open(outfile, mode='w') as csv_file:
-        fieldnames = ['source_video', 'store_id', 'camera_id', 'index', 'tracking_id', 'frame', 'timestamp', 'confidence', 'xmin', 'ymin', 'xmax', 'ymax']
+        fieldnames = ['source_video', 'store_id', 'camera_id', 'index', 'tracking_id', 'frame', 'timestamp', 'confidence', 'x_min', 'y_min', 'x_max', 'y_max']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
         writer.writeheader()
