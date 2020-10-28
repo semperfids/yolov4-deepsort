@@ -1,4 +1,7 @@
 import csv
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
 import datetime as dt
 
 def get_video_name_data(video_path):
@@ -60,4 +63,18 @@ def compute_timestamp_from_frame(init_timestamp, frame):
     num_seconds = int(frame / const_frames_per_second)
     #Add the number of seconds to the timestamp
     return init_timestamp + dt.timedelta(0,num_seconds)
+
+# By Johansmm
+def drawBoxes(frame, predictions):
+    cmap = plt.get_cmap('tab20b')
+    colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
+    for _,row in predictions.iterrows():
+        bbox, conf = (row["x_min"],row["y_min"],row["x_max"],row["y_max"]), row["confidence"]
+        # [int(c) for c in self.__colors[label_index]]
+        color = colors[int(row["tracking_id"]) % len(colors)]
+        cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 5)
+        cv2.rectangle(frame, (bbox[0], bbox[1]-30), (bbox[0]+(5+len(str(row["tracking_id"])))*17, bbox[1]), color, -1)
+        cv2.putText(frame, "p" + str(int(row["tracking_id"])) + "{0:.4f}".format(conf),(bbox[0], bbox[1]-10),0, 0.75, (255,255,255),2)
+    cv2.putText(frame, "Objects being tracked: {}".format(len(predictions)), (5, 35), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 255, 0), 2)
+    return frame
 

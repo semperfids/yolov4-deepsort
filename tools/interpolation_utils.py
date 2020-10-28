@@ -15,7 +15,7 @@ class interpolation:
         if output_csv is None:
             odir, ofile = os.path.split(input_csv)
             ofile, ext = os.path.splitext(ofile)
-            self.output_csv = os.path.join(odir, ofile + "_ouput" + ext)
+            self.output_csv = os.path.join(odir, ofile + "_output" + ext)
         else: self.output_csv = output_csv
         self.window_time = window_time
         self.max_overlap = max_overlap
