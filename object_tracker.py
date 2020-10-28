@@ -24,6 +24,7 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 from tools import ds4a_utils
+from tools import interpolation_utils
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
@@ -40,6 +41,11 @@ flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
 flags.DEFINE_string('file_output', './data/outputs/test.csv', 'path to output csv file')
+
+# By Johansmm
+flags.DEFINE_string('file_output_interpolation', None, 'path to output csv file with interpolation')
+flags.DEFINE_float('max_overlap', 0.7, 'maximum overlap to id correction')
+flags.DEFINE_float('window_time', 10.0, 'window time to interpolate')
 
 def main(_argv):
     # Definition of the parameters
@@ -245,11 +251,18 @@ def main(_argv):
         if FLAGS.output:
             out.write(result)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
-    ds4a_utils.write_to_csv(output_csv_data, FLAGS.file_output)
+    
     cv2.destroyAllWindows()
+    ds4a_utils.write_to_csv(output_csv_data, FLAGS.file_output)
 
-
-
+    # By Johansmm
+    inter = interpolation_utils.interpolation(FLAGS.file_output, 
+            FLAGS.file_output_interpolation,
+            FLAGS.window_time, FLAGS.max_overlap) # Interpol-object creation
+    df = inter.read_csv()
+    df = inter.id_corrections(df)
+    df = inter.frames_interpolation(df)
+    inter.to_csv(df)
 
 if __name__ == '__main__':
     try:
