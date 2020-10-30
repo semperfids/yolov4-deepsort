@@ -74,6 +74,14 @@ class database:
         self.engine.connect().execution_options(isolation_level="AUTOCOMMIT").execute((text(sql)))
         print("["+time.strftime("%x %I:%M:%S %p")+"][INFO] Table {} created successfully!".format(sql_table_name))
 
+    def db_scheme_info(self):
+        print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: All databases:")
+        print(self.get_dbs_info())
+        current_db = self.get_current_db()["current_database"].values
+        print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Current database:", current_db)
+        tables = self.get_tables()
+        print(tables[tables["tableowner"] == current_db[0]])
+
     ''' Hidden functions '''
     def __existRegister(self, reg, sql_table):
         key_fields = ["id_tienda", "id_camara", "indice_conteo", "indice_seguimiento", "frame", "tiempo", "video_origen"]
@@ -85,30 +93,44 @@ class database:
         if len(sql_response) == 0: return False
         else: return True
 
+## Hidden functions ####################################################
+def readFileList(file_directory, ext = 'jpg'): # Read a valid json-files inside folder / independenly file
+    files_list = []
+    if os.path.isdir(file_directory): # Return files with 'json' extension
+        for root_path, _, files_name in os.walk(file_directory):
+            files_list += [os.path.join(root_path, element) for element in files_name if element.split(".")[-1].lower() == ext.lower()]
+    elif file_directory.split('.')[-1] == ext: files_list = [file_directory] # Return file inside of list
+    return files_list
+
+def to_table(sql_connection, sql_table, dir_csv):
+    if os.path.isdir(dir_csv):
+        file_list = [x for x in readFileList(dir_csv, "csv") if "_output.csv" in x] # Special filter!!
+        print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Total files to be uploaded to the database:", len(file_list))
+        for csv_file in file_list:
+            print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO]: {} uploading ...".format(csv_file))
+            df = pd.read_csv(csv_file, header=0)
+            sql_connection.to_sql(df, sql_table)
+    elif os.path.isfile(dir_csv) and os.path.splitext(dir_csv)[1] == ".csv":
+        df = pd.read_csv(dir_csv, header=0)
+        sql_connection.to_sql(df, sql_table)
+    else:
+        print("["+time.strftime("%x %I:%M:%S %p")+"][ERROR]: File or directory doesn't exist. Please check") 
+
 ## Main ################################################################
 def main(args):
     sql_connection = database(args.credentials, args.database)
     # if args.sql_table is not None: sql_connection.sqltable_setup(args.sql_table) # Clean db
 
-    print("[INFO]: All databases:")
-    print(sql_connection.get_dbs_info())
-    current_db = sql_connection.get_current_db()["current_database"].values
-    print("[INFO]: Current database:",current_db)
-    tables = sql_connection.get_tables()
-    print(tables[tables["tableowner"] == current_db[0]])
-
     if args.sql_query is not None:
-        print("\n[INFO] User query:")
+        print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO] User query:")
         query_cons = sql_connection.runQuery(args.sql_query)
-        print(query_cons)
-        print(query_cons.info())
+        print(query_cons, "\n")
     
-    if args.csv is not None:
-        if args.sql_table is None:
-            print("[ERROR]: -sqlt is needed to upload information.")
+    if args.directory_csv is not None:
+        if args.sql_table is not None: 
+            to_table(sql_connection, args.sql_table, args.directory_csv)
         else:
-            df = pd.read_csv(args.csv, header=0)
-            sql_connection.to_sql(df, args.sql_table)
+            print("["+time.strftime("%x %I:%M:%S %p")+"][ERROR]: -sqlt is needed to upload information.")
 
 def parse_args():
     '''parse args'''
@@ -117,9 +139,9 @@ def parse_args():
         epilog='''Example:\n\t python %(prog)s # Conection with database and simples consult''')
     parser.add_argument('-c', '--credentials', required = True, type=str, help='SQL credentials in json file')
     parser.add_argument('-db', '--database', default = "postgres", type=str, help='SQL data base (default: %(default)s)')
-    parser.add_argument('-sqlq', '--sql_query', default = None, type=str, help='SQL specific query (default: %(default)s)')
     parser.add_argument('-sqlt', '--sql_table', default = None, type=str, help='SQL table to query/upload (default: %(default)s)')
-    parser.add_argument('-csv', '--csv', default = None, type=str, help='CSV to upload on database (default: %(default)s)')
+    parser.add_argument('-sqlq', '--sql_query', default = None, type=str, help='SQL specific query (default: %(default)s)')
+    parser.add_argument('-dcsv', '--directory_csv', default = None, type=str, help='CSV or directory with CSV to upload on database (default: %(default)s)')
     return parser.parse_args()
 
 if __name__ == "__main__":
