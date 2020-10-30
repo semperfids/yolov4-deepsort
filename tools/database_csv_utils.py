@@ -106,10 +106,12 @@ def to_table(sql_connection, sql_table, dir_csv):
     if os.path.isdir(dir_csv):
         file_list = [x for x in readFileList(dir_csv, "csv") if "_output.csv" in x] # Special filter!!
         print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Total files to be uploaded to the database:", len(file_list))
+        i = 1
         for csv_file in file_list:
-            print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO]: {} uploading ...".format(csv_file))
+            print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO]: {} uploading ({} of {}) ...".format(csv_file, i, len(file_list)))
             df = pd.read_csv(csv_file, header=0)
             sql_connection.to_sql(df, sql_table)
+            i += 1
     elif os.path.isfile(dir_csv) and os.path.splitext(dir_csv)[1] == ".csv":
         df = pd.read_csv(dir_csv, header=0)
         sql_connection.to_sql(df, sql_table)
