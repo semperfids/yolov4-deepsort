@@ -63,8 +63,6 @@ class database:
     def to_sql(self, df, sql_table, if_exists = "append"):
         # Data preparation
         df = df.rename(columns = cols_rename)
-        if "x_trans" not in df.columns: df["x_trans"] = 10000 # Illegal values
-        if "y_trans" not in df.columns: df["y_trans"] = 10000 # Illegal values
         print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Starting registers update...")
         df.to_sql(sql_table, self.engine, if_exists=if_exists, index=False) # Add new register if doesn't exist
         print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Registers updated successufully.")
@@ -102,19 +100,24 @@ def readFileList(file_directory, ext = 'jpg'): # Read a valid json-files inside 
     elif file_directory.split('.')[-1] == ext: files_list = [file_directory] # Return file inside of list
     return files_list
 
-def to_table(sql_connection, sql_table, dir_csv):
+def to_table(sql_connection, sql_table, dir_csv, if_exists = "append", isfilter = False):
     if os.path.isdir(dir_csv):
-        file_list = [x for x in readFileList(dir_csv, "csv") if "_output.csv" in x] # Special filter!!
+        file_list = readFileList(dir_csv, "csv")
+        if isfilter: file_list = [x for x in file_list if "_output.csv" in x] # Special filter!!
         print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Total files to be uploaded to the database:", len(file_list))
         i = 1
         for csv_file in file_list:
             print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO]: {} uploading ({} of {}) ...".format(csv_file, i, len(file_list)))
-            df = pd.read_csv(csv_file, header=0)
-            sql_connection.to_sql(df, sql_table)
+            df = pd.read_csv(csv_file, header=0).drop(columns = ["tienda"])
+            if if_exists == "append": sql_connection.to_sql(df, sql_table)
+            elif if_exists == "replace":
+                if i == 1: df_total = pd.DataFrame(columns = df.columns)
+                df_total = df_total.append(df)
             i += 1
+        if if_exists == "replace": sql_connection.to_sql(df_total, sql_table, if_exists = if_exists)
     elif os.path.isfile(dir_csv) and os.path.splitext(dir_csv)[1] == ".csv":
         df = pd.read_csv(dir_csv, header=0)
-        sql_connection.to_sql(df, sql_table)
+        sql_connection.to_sql(df, sql_table, if_exists = if_exists)
     else:
         print("["+time.strftime("%x %I:%M:%S %p")+"][ERROR]: File or directory doesn't exist. Please check") 
 
@@ -126,13 +129,16 @@ def main(args):
     if args.sql_query is not None:
         print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO] User query:")
         query_cons = sql_connection.runQuery(args.sql_query)
-        print(query_cons, "\n")
+        print(query_cons)
+        print(query_cons.shape)
     
     if args.directory_csv is not None:
         if args.sql_table is not None: 
-            to_table(sql_connection, args.sql_table, args.directory_csv)
+            to_table(sql_connection, args.sql_table, args.directory_csv, "append", isfilter=True)
         else:
             print("["+time.strftime("%x %I:%M:%S %p")+"][ERROR]: -sqlt is needed to upload information.")
+    else:
+        sql_connection.db_scheme_info()
 
 def parse_args():
     '''parse args'''
