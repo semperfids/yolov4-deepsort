@@ -147,7 +147,7 @@ def main(args):
     if args.sql_query is not None:
         print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO] User query:")
         query_cons = sql_connection.runQuery(args.sql_query)
-        print(query_cons["tiempo"])
+        print(query_cons)
         print(query_cons.shape)
     
     if args.directory_csv is not None:
