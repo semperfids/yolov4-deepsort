@@ -28,34 +28,40 @@ class interpolation:
         return df
     
     def frames_interpolation(self, frames):
-        types = frames.dtypes
-        frames = frames.set_index("frame").sort_index()
-        result = pd.DataFrame(columns = frames.columns) # Empty results
-        for track_id in frames["tracking_id"].unique():
-            id_tab = frames[frames["tracking_id"] == track_id]
-            start, end = id_tab.index.values[0], id_tab.index.values[-1] # Find empty frames and fill in
-            empty_frames = sorted(set(range(start, end + 1)).difference(id_tab.index.values))
-            if len(empty_frames) > 0: # For empty frames
-                id_tab = id_tab.reindex(id_tab.index.to_list() + empty_frames).sort_index()
-            result = result.append(id_tab.ffill())
-        result = result.sort_index().reset_index().rename(columns = {"level_0":"frame"})
-        result["index"] = result.index.values + 1 # fix index col
-        result = result.astype(types)
+        if len(frames) > 0:
+            types = frames.dtypes
+            frames = frames.set_index("frame").sort_index()
+            result = pd.DataFrame(columns = frames.columns) # Empty results
+            for track_id in frames["tracking_id"].unique():
+                id_tab = frames[frames["tracking_id"] == track_id]
+                start, end = id_tab.index.values[0], id_tab.index.values[-1] # Find empty frames and fill in
+                empty_frames = sorted(set(range(start, end + 1)).difference(id_tab.index.values))
+                if len(empty_frames) > 0: # For empty frames
+                    id_tab = id_tab.reindex(id_tab.index.to_list() + empty_frames).sort_index()
+                result = result.append(id_tab.ffill())
+            result = result.sort_index().reset_index().rename(columns = {"level_0":"frame"})
+            result["index"] = result.index.values + 1 # fix index col
+            result = result.astype(types)
+        else:
+            result = frames.copy()
         return result
 
     def id_corrections(self, frames):
         new_detections = frames.set_index("frame").copy()
         wt = td(seconds=self.window_time)
-        for t in np.arange(frames["timestamp"].min(), frames["timestamp"].max(), wt):
-            t = pd.to_datetime(t)
-            idx_replace = self.__non_max_suppression(new_detections[(new_detections["timestamp"] > t) & (new_detections["timestamp"] <= t + wt)])
-            if programmer: print(idx_replace)
-            if len(idx_replace) > 0:
-                for rep in idx_replace:
-                    key,value = list(rep.keys())[0], list(rep.values())[0]
-                    proof_tab = new_detections[(new_detections["tracking_id"] == key) | (new_detections["tracking_id"] == value)]
-                    if not (proof_tab.reset_index().groupby("frame").size().unique() != [1]).any():
-                        new_detections.replace({"tracking_id": rep}, inplace=True)
+        try: # Only for not-empty detections
+            for t in np.arange(frames["timestamp"].min(), frames["timestamp"].max(), wt):
+                t = pd.to_datetime(t)
+                idx_replace = self.__non_max_suppression(new_detections[(new_detections["timestamp"] > t) & (new_detections["timestamp"] <= t + wt)])
+                if programmer: print(idx_replace)
+                if len(idx_replace) > 0:
+                    for rep in idx_replace:
+                        key,value = list(rep.keys())[0], list(rep.values())[0]
+                        proof_tab = new_detections[(new_detections["tracking_id"] == key) | (new_detections["tracking_id"] == value)]
+                        if not (proof_tab.reset_index().groupby("frame").size().unique() != [1]).any():
+                            new_detections.replace({"tracking_id": rep}, inplace=True)
+        except:
+            pass
         return new_detections.reset_index()
 
     def to_csv(self, df, output_csv = None):

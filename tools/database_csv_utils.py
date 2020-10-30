@@ -64,8 +64,11 @@ class database:
         # Data preparation
         df = df.rename(columns = cols_rename)
         print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Starting registers update...")
-        df.to_sql(sql_table, self.engine, if_exists=if_exists, index=False) # Add new register if doesn't exist
-        print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Registers updated successufully.")
+        if len(df) > 0:
+            df.to_sql(sql_table, self.engine, if_exists=if_exists, index=False) # Add new register if doesn't exist
+            print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Registers updated successufully.")
+        else:
+            print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Empty data, ignored.")
 
     def sqltable_setup(self, sql_table_name): # Clean database
         sql = create_table_query.format(sql_table_name)
