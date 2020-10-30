@@ -2,6 +2,7 @@
 import pandas as pd
 import os, argparse, json, time
 from sqlalchemy import create_engine, text
+from ds4a_utils import coord_transformation
 
 ## Paths and global variables ##########################################
 cols_rename = { # Conversion if requered in csv formats
@@ -19,7 +20,7 @@ create_table_query = '''DROP TABLE if exists public.{0};
     "indice_conteo" integer NOT NULL,
     indice_seguimiento integer NOT NULL,
     frame integer NOT NULL,
-    "tiempo" date NOT NULL,
+    "tiempo" timestamp NOT NULL,
     confianza double precision NOT NULL,
     x_min integer NOT NULL,
     y_min integer NOT NULL,
@@ -30,6 +31,8 @@ create_table_query = '''DROP TABLE if exists public.{0};
     video_origen varchar NULL,
     id_registro serial NOT NULL,
     CONSTRAINT {0}_pk PRIMARY KEY (id_registro)); '''
+
+get_matrix_query = "SELECT * FROM matriz_transformacion"
 
 ## Class/Functions #####################################################
 class database:
@@ -42,6 +45,7 @@ class database:
             cred["host_server"], 
             database)
         self.engine = create_engine(engine_text, **engine_kwargs)
+        self.matrix_trans = None
     
     ''' User functions '''
     def get_dbs_info(self):
@@ -63,8 +67,13 @@ class database:
     def to_sql(self, df, sql_table, if_exists = "append"):
         # Data preparation
         df = df.rename(columns = cols_rename)
-        print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Starting registers update...")
         if len(df) > 0:
+            if sql_table in ["coordenadas_videos", "johan_dev"]:
+                if "x_trans" not in df.columns or "y_trans" not in df.columns:
+                    print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Matrix transform processing...")
+                    df = self.__points_transform(df)
+                    print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Matrix transform made successfully.")
+            print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Starting registers update...")
             df.to_sql(sql_table, self.engine, if_exists=if_exists, index=False) # Add new register if doesn't exist
             print("["+time.strftime("%x %I:%M:%S %p")+"][INFO]: Registers updated successufully.")
         else:
@@ -94,6 +103,12 @@ class database:
         if len(sql_response) == 0: return False
         else: return True
 
+    def __points_transform(self, combined_csv):
+        if self.matrix_trans is None: # Read 
+            self.matrix_trans = self.runQuery(get_matrix_query)
+        combined_csv["x_trans"], combined_csv["y_trans"] = zip(*combined_csv.apply(coord_transformation, axis = 1, args = ([self.matrix_trans])))
+        return combined_csv
+
 ## Hidden functions ####################################################
 def readFileList(file_directory, ext = 'jpg'): # Read a valid json-files inside folder / independenly file
     files_list = []
@@ -111,7 +126,7 @@ def to_table(sql_connection, sql_table, dir_csv, if_exists = "append", isfilter 
         i = 1
         for csv_file in file_list:
             print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO]: {} uploading ({} of {}) ...".format(csv_file, i, len(file_list)))
-            df = pd.read_csv(csv_file, header=0).drop(columns = ["tienda"])
+            df = pd.read_csv(csv_file, header=0)#.drop(columns = ["tienda"])
             if if_exists == "append": sql_connection.to_sql(df, sql_table)
             elif if_exists == "replace":
                 if i == 1: df_total = pd.DataFrame(columns = df.columns)
@@ -132,7 +147,7 @@ def main(args):
     if args.sql_query is not None:
         print("\n["+time.strftime("%x %I:%M:%S %p")+"][INFO] User query:")
         query_cons = sql_connection.runQuery(args.sql_query)
-        print(query_cons)
+        print(query_cons["tiempo"])
         print(query_cons.shape)
     
     if args.directory_csv is not None:

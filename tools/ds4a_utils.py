@@ -1,5 +1,4 @@
-import csv
-import cv2
+import csv, cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
@@ -78,3 +77,15 @@ def drawBoxes(frame, predictions):
     cv2.putText(frame, "Objects being tracked: {}".format(len(predictions)), (5, 35), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 255, 0), 2)
     return frame
 
+# From Jose & Johansmm
+def coord_transformation(row, camera_config):
+    x_source, y_source = int(0.5*(row["x_min"] + row["x_max"])), row["y_max"]
+    camera_config = camera_config.loc[(camera_config["id_camara"] == row["id_camara"]) & (camera_config["id_tienda"] == row["id_tienda"])].reset_index()
+
+    Hmatrix = np.array([[camera_config["h_11"], camera_config["h_12"], camera_config["h_13"]],
+        [camera_config["h_21"], camera_config["h_22"], camera_config["h_23"]],
+        [camera_config["h_31"], camera_config["h_32"], camera_config["h_33"]]])
+  
+    pointsIn = np.array([[[x_source, y_source]]], dtype='float32')
+    pointsOut = cv2.perspectiveTransform(pointsIn, Hmatrix)
+    return int(pointsOut[0,0,0]), int(pointsOut[0,0,1])
