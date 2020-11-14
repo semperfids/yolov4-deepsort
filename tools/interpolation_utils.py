@@ -37,28 +37,29 @@ class interpolation:
                 start, end = id_tab.index.values[0], id_tab.index.values[-1] # Find empty frames and fill in
                 empty_frames = sorted(set(range(start, end + 1)).difference(id_tab.index.values))
                 if len(empty_frames) > 0: # For empty frames
-                    id_tab = id_tab.reindex(id_tab.index.to_list() + empty_frames).sort_index()
+                    id_tab = id_tab.reindex(id_tab.index.to_list() + empty_frames)
                 result = result.append(id_tab.ffill())
-            result = result.sort_index().reset_index().rename(columns = {"level_0":"frame"})
+            result.index.name = "frame"
+            result = result.reset_index().astype(types).sort_values("timestamp", ignore_index = True)
             result["index"] = result.index.values + 1 # fix index col
-            result = result.astype(types)
         else:
             result = frames.copy()
         return result
 
     def id_corrections(self, frames):
-        new_detections = frames.set_index("frame").copy()
+        new_detections = frames.set_index("frame").sort_index()
         wt = td(seconds=self.window_time)
         try: # Only for not-empty detections
             for t in np.arange(frames["timestamp"].min(), frames["timestamp"].max(), wt):
                 t = pd.to_datetime(t)
                 idx_replace = self.__non_max_suppression(new_detections[(new_detections["timestamp"] > t) & (new_detections["timestamp"] <= t + wt)])
+                print(idx_replace)
                 if programmer: print(idx_replace)
                 if len(idx_replace) > 0:
                     for rep in idx_replace:
                         key,value = list(rep.keys())[0], list(rep.values())[0]
                         proof_tab = new_detections[(new_detections["tracking_id"] == key) | (new_detections["tracking_id"] == value)]
-                        if not (proof_tab.reset_index().groupby("frame").size().unique() != [1]).any():
+                        if not (proof_tab.groupby(proof_tab.index).size().unique() != [1]).any():
                             new_detections.replace({"tracking_id": rep}, inplace=True)
         except:
             pass
@@ -89,10 +90,9 @@ class interpolation:
         new_result = [] # Save the results
         while len(df) > 0:
             iou_table = df[df.apply(self.__intersection_over_union, args = ([df.iloc[0]]), axis = 1) > self.max_overlap] # IoU estimate
+            id_min = iou_table["tracking_id"].min()
             for id in iou_table["tracking_id"].unique():
-                if id != iou_table["tracking_id"].min():
-                    # print(iou_table[(iou_table["tracking_id"] == id) | (iou_table["tracking_id"] == iou_table["tracking_id"].min())])
-                    new_result.append({id: iou_table["tracking_id"].min()}) # Add only the best result
+                if id != id_min: new_result.append({id: id_min}) # Add only the best result
             df.drop(iou_table.index, inplace = True) # Remove old results
         return new_result
 
@@ -100,8 +100,10 @@ class interpolation:
 def main(args):
     inter = interpolation(args.input_csv, args.output_csv, args.window_time, args.max_overlap)
     df = inter.read_csv()
+    print("[INFO]: Total ID people previous correction:", len(df["tracking_id"].unique()), "and total registers:", len(df))
     df = inter.id_corrections(df)
     df = inter.frames_interpolation(df)
+    print("[INFO]: Total ID people with correction:", len(df["tracking_id"].unique()), "and total registers:", len(df))
     inter.to_csv(df)
     print(df)
 
